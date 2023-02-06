@@ -3,7 +3,7 @@ import { QueryResult } from "pg";
 
 interface iMoviesRequest {
   name: string;
-  description: string;
+  description?: string;
   duration: number;
   price: number;
 }

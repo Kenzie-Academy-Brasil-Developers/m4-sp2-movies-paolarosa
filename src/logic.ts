@@ -23,17 +23,24 @@ const createList = async (request: Request, response: Response): Promise<Respons
   if (validate) {
     return response.status(409).json({ message: `Movie already exists` });
   }
-  const queryString: string = `
-  INSERT INTO movies(name, description, duration, price)
-  VALUES ($1, $2, $3, $4)
+  const createColumns: any[] = Object.keys(request.body);
+  const createValues: any[] = Object.values(request.body);
+
+  const queryString: string = format ( `
+  INSERT INTO movies (%I)
+  VALUES (%L)
   RETURNING *;
-  `;
+  `, createColumns, createValues)
+
   const queryConfig: QueryConfig = {
     text: queryString,
-    values: Object.values(dataRequest),
   };
+  
   const queryResult: ListResult = await client.query(queryConfig);
   const newList: listCreate = queryResult.rows[0];
+  if(!request.body.description){
+    return response.status(201).json(newList);
+  }
   return response.status(201).json(newList);
 };
 
@@ -41,8 +48,10 @@ const createList = async (request: Request, response: Response): Promise<Respons
 const getList = async (request: Request, response: Response): Promise<Response> => {
   let perPage: any =
     request.query.perPage === undefined ? 5 : request.query.perPage;
-  let page: any = request.query.page === undefined ? 1 : request.query.page;
-
+  let page: any = request.query.page === undefined ? 1 : +request.query.page;
+   if(!+page){
+    return response.status(400).json({message: "Page must to be a number"});
+  } 
   if (page <= 0 || perPage <= 0) {
     page = 1;
     perPage = 5;
@@ -69,7 +78,6 @@ const getList = async (request: Request, response: Response): Promise<Response> 
   SELECT COUNT(*) FROM movies;`
 
   const queryResultTotal = await client.query(queryTotal);
-  console.log(queryResultTotal.rows[0].count)
 
   let previousPage: any = `http://localhost:3000/movies?page=${page - 1}&perPage=${perPage}`;
   if (page - 1 <= 0) {
@@ -79,8 +87,7 @@ const getList = async (request: Request, response: Response): Promise<Response> 
   let nextPage: any = `http://localhost:3000/movies?page=${+page + 1}&perPage=${perPage}`;
   const count = queryResultTotal.rows[0].count
   const pages = count / 5
-  console.log(pages === +page)
-  if (pages === +page) {
+  if(count % 5 === 0 && pages === +page || queryResult.rows.length < 5){
     nextPage = null;
   }
   const returningData = {
@@ -115,15 +122,8 @@ const updateList = async (request: Request,response: Response): Promise<Response
 
   const queryResult: ListResult = await client.query(queryConfig);
   const searchId = queryResult.rows.find((el: any) => {
-    console.log(el.id)
-    console.log(request.params.id)
     return el.id === request.params.id;
   });
-  
-  console.log(searchId)
-  /* if (!searchId) {
-    return response.status(404).json({ message: `Movie not found` });
-  } */
   const updateMovies = queryResult.rows[0];
   return response.status(200).json(updateMovies);
 };
