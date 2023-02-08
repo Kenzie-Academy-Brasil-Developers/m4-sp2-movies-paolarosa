@@ -50,7 +50,7 @@ const getList = async (request: Request, response: Response): Promise<Response> 
     request.query.perPage === undefined ? 5 : request.query.perPage;
   let page: any = request.query.page === undefined ? 1 : +request.query.page;
    if(!+page){
-    return response.status(400).json({message: "Page must to be a number"});
+    page = 1;
   } 
   if (page <= 0 || perPage <= 0) {
     page = 1;
@@ -59,6 +59,9 @@ const getList = async (request: Request, response: Response): Promise<Response> 
   if (perPage > 5) {
     perPage = 5;
   }
+  if(!+perPage){
+    perPage = 5;;
+  } 
   let sort: any = request.query.sort === undefined ? "id" : request.query.sort;
   let order: any =
     request.query.order === undefined ? "ASC" : request.query.order;
@@ -93,8 +96,8 @@ const getList = async (request: Request, response: Response): Promise<Response> 
   const returningData = {
     previousPage,
     nextPage,
-    count: 5,
-    data: [queryResult.rows],
+    count: +count,
+    data: queryResult.rows,
   };
   return response.status(200).json(returningData);
 };
